@@ -39,7 +39,7 @@ MathProgBase.isconstrlinear(::My_Eval, ::Integer) = true
 # E v a l u a t i o n :   0 t h   o r d e r
 # ------------------------------------------
 function MathProgBase.eval_f{TFloat_2,TFloat}(e::My_Eval, x::Vector{TFloat_2},dummy::TFloat=Float64(0)) :: TFloat
-    print("eval_f")
+    # println("eval_f")
     local condent::Float64
     if e.TmpFloat==BigFloat
         prc = precision(BigFloat)
@@ -49,22 +49,23 @@ function MathProgBase.eval_f{TFloat_2,TFloat}(e::My_Eval, x::Vector{TFloat_2},du
     else
         condent = condEntropy(e,x,Float64(0))
     end
-    print("END eval_f")
+    # println("END eval_f")
     return condent
     ;
 end #^ eval_f()
 
 # eval_g --- eval of constraint into g
 function MathProgBase.eval_g(e::My_Eval, g::Vector{Float64}, x::Vector{Float64})  :: Void
-    print("eval_g")
+    # println("eval_g")
     g .= reshape( reshape(x,1,e.n)*e.Gt , e.m, ) .- e.rhs
+    # println("END eval_g")
     return nothing
     ;
 end # eval_g()
 
 # eval_grad_f --- eval gradient of objective function
 function MathProgBase.eval_grad_f(e::My_Eval, g::Vector{Float64}, x::Vector{Float64}) :: Void
-    print("eval_grad_f")
+    # println("eval_grad_f")
     if e.TmpFloat==BigFloat
         prc = precision(BigFloat)
         setprecision(BigFloat,e.bigfloat_nbits)
@@ -73,7 +74,8 @@ function MathProgBase.eval_grad_f(e::My_Eval, g::Vector{Float64}, x::Vector{Floa
     else
         ∇f(e,g,x,Float64(0))
     end
-    print("END eval_grad_f")
+    # println("END eval_grad_f")
+    return nothing 
     ;
 end # eval_grad_f()
 
@@ -86,6 +88,7 @@ MathProgBase.jac_structure(e::My_Eval) :: Tuple{Vector{Int64},Vector{Int64}}   =
 # eval_jac_g() --- constraint Jacobian   -> J
 function MathProgBase.eval_jac_g(e::My_Eval, J::Vector{Float64}, x::Vector{Float64}) :: Void
     J .= e.Gt.nzval
+    return nothing
     ;
 end # eval_jac_g()
 
@@ -163,16 +166,16 @@ function Hess{TFloat}(e::My_Eval, H::Vector{Float64}, p::Vector{Float64}, σ::Fl
             end
 
             # now: for all pairs x,u we have:
-            # if x ≠  u:   -1/P_yz;
-            # if x == u:   ( P_yz - P(xyz) )/(  P_yz * P(xyz) )
+            # if x ≠  u:   1/P_yz;
+            # if x == u:   -( P_yz - P(xyz) )/(  P_yz * P(xyz) )
 
             # Start with the diagonal
             for x = 1:e.n_x
                 i = e.varidx[x,y,z]
                 if i>0
                     counter += 1
-                    P_xyz = p[i]
-                    H[counter] = Float64(   (P_xyz == 0 ) ?  1.e50  : TFloat(σ)*( P_yz - P_xyz )/(  P_yz * P_xyz )  )
+                    P_xyz = p[i] 
+                    H[counter] = Float64(   (P_xyz == 0 ) ?  1.e50  : TFloat(σ)*( -P_yz + P_xyz )/(  P_yz * P_xyz )  ) # flipped sign p_yz - p_xyz 
                 end
             end
             # Now off-diagonal.
@@ -184,7 +187,7 @@ function Hess{TFloat}(e::My_Eval, H::Vector{Float64}, p::Vector{Float64}, σ::Fl
                     i_u = e.varidx[u,y,z]
                     if i_x>0 && i_u>0
                         counter += 1
-                        H[counter] = -TFloat(σ)/P_yz
+                        H[counter] = TFloat(σ)/P_yz # flipped sign 
                     end
                 end
             end
@@ -205,6 +208,7 @@ function MathProgBase.eval_hesslag(e::My_Eval, H::Vector{Float64}, x::Vector{Flo
     else
         Hess(e,H,x,σ,Float64(0))
     end
+    return nothing
     ;
 end # eval_hesslag()
 

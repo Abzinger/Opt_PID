@@ -10,7 +10,8 @@ using MathProgBase
 struct PID_Results
     support  :: Array{Tuple{Int,Int,Int}}    # support of the following two vectors
     q        :: Vector{Float64}              # argmax H(X|YZ)
-    ∇        :: Vector{Float64}              # (super-)gradient of H(X|YZ) in p
+    # ∇        :: Vector{Float64}              # (super-)gradient of H(X|YZ) in p
+    λ        :: Vector{Float64}              # (super-)gradient of H(X|YZ) in p
     p        :: Vector{Float64}              # current iterate (3-dim array!)
 end
 
@@ -32,9 +33,9 @@ function init_pid_data(n_X::Int, n_Y::Int, n_Z::Int, their_support::Array{Tuple{
     pdummy = zeros(Float64,n_X,n_Y,n_Z)
     for xyz in their_support
         x,y,z = xyz
-        @assert 1 ≤ x ≤ n_X "x out of range"
-        @assert 1 ≤ y ≤ n_Y "y out of range"
-        @assert 1 ≤ z ≤ n_Z "z out of range"
+        @assert 1 ≤ x ≤ n_X "x out of range" 
+        @assert 1 ≤ y ≤ n_Y "y out of range" 
+        @assert 1 ≤ z ≤ n_Z "z out of range" 
 
         pdummy[ x,y,z ] = 1.
     end
@@ -78,24 +79,24 @@ function pid!(pd::PID_Data, p::Vector{Float64} ) :: Void
         my_sol  = MathProgBase.getsolution(model)
         my_dual = MathProgBase.getconstrduals(model)
 
-        for i in 1:m
-            x,y,z = support[i]
+        for i in 1:n # changed m to n 
+            x,y,z = pd.results.support[i]
             pd.results.q[i]   =   my_sol[   pd.myeval.varidx[x,y,z]   ]
         end
 
         pd.results.λ .= 0.
-        for k in 1:ev.m
+        for k in 1:pd.myeval.m
             mr = pd.myeval.mr_eq[k]
             if mr[1] == "xy"
                 x,y = mr[2], mr[3]
                 for z in 1:pd.myeval.n_z
-                    i = varidx[x,y,z]
+                    i = pd.myeval.varidx[x,y,z]
                     i==0  || (  pd.results.λ[i] += my_dual[k]  )
                 end
             elseif mr[1]=="xz"
                 x,z = mr[2], mr[3]
                 for y in  1:pd.myeval.n_y
-                    i = varidx[x,y,z]
+                    i = pd.myeval.varidx[x,y,z]
                     i==0  || (  pd.results.λ[i] += my_dual[k]  )
                 end
             else
